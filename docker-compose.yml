@@ -1,0 +1,46 @@
+services:
+  model-api:
+    build: .
+    image: iris-classifier-service:1.0.0
+    container_name: model-api
+    ports:
+      - "8000:8000"
+    environment:
+      LOG_LEVEL: INFO
+      LATENCY_SLO_MS: "100"
+      DRIFT_WINDOW: "200"
+    volumes:
+      - model-logs:/app/logs
+    restart: unless-stopped
+    read_only: true                 # immutable root filesystem...
+    tmpfs:
+      - /tmp                        # ...with scratch space only where needed
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=2).status==200 else 1)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+  # Optional: `docker compose --profile monitoring up` adds a Prometheus scraping /metrics
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    profiles: ["monitoring"]
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+    depends_on:
+      model-api:
+        condition: service_healthy
+
+volumes:
+  model-logs:

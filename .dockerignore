@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.git
+.gitignore
+logs/
+model/artifacts/
+tests/
+docs/
+*.zip
+*.pdf
+.venv/
+.pytest_cache/
